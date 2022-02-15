@@ -50,6 +50,10 @@ if !exists("g:tmux_navigator_preserve_zoom")
   let g:tmux_navigator_preserve_zoom = 0
 endif
 
+if !exists("g:tmux_navigator_no_wrap")
+  let g:tmux_navigator_no_wrap = 0
+endif
+
 function! s:TmuxOrTmateExecutable()
   return (match($TMUX, 'tmate') != -1 ? 'tmate' : 'tmux')
 endfunction
@@ -119,6 +123,18 @@ function! s:TmuxAwareNavigate(direction)
     let args = 'select-pane -t ' . shellescape($TMUX_PANE) . ' -' . tr(a:direction, 'phjkl', 'lLDUR')
     if g:tmux_navigator_preserve_zoom == 1
       let l:args .= ' -Z'
+    endif
+    " Prevent wrapping, if option is set, by checking if last pane in appropriate direction
+    if g:tmux_navigator_no_wrap == 1
+      if a:direction == 'h'
+        let args = 'if-shell "expr #{pane_left}" "' . args . '"'
+      elseif a:direction == 'j'
+        let args = 'if-shell "expr #{window_height} - #{pane_bottom} - 1 " "' . args . '"'
+      elseif a:direction == 'k'
+        let args = 'if-shell "expr #{pane_top}" "' . args . '"'
+      elseif a:direction == 'l'
+        let args = 'if-shell "expr #{window_width} - #{pane_right} - 1" "' . args . '"'
+      endif
     endif
     silent call s:TmuxCommand(args)
     if s:NeedsVitalityRedraw()
